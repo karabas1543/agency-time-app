@@ -17,6 +17,13 @@ if (process.contextIsolated || true) {
                 ipcRenderer.on('startTimer', (_event, value) => callback(value)),
             onStopTimer: (callback) =>
                 ipcRenderer.on('stopTimer', (_event, value) => callback(value)),
+            onPauseTimer: (callback) =>
+                ipcRenderer.on('pauseTimer', (_event, value) => callback(value)),
+            onResumeTimer: (callback) =>
+                ipcRenderer.on('resumeTimer', (_event, value) => callback(value)),
+            screenshotTimerStarted: (timeEntryId: string, organizationId: string, token: string, endpoint: string) =>
+                ipcRenderer.send('screenshotTimerStarted', timeEntryId, organizationId, token, endpoint),
+            screenshotTimerStopped: () => ipcRenderer.send('screenshotTimerStopped'),
             onOpenDeeplink: (callback) =>
                 ipcRenderer.on('openDeeplink', (_event, value) => callback(value)),
             showMiniWindow: () => ipcRenderer.send('showMiniWindow'),

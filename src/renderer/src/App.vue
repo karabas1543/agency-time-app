@@ -24,33 +24,33 @@ import { isWidgetActivated } from './utils/settings.ts'
 
 import UpdateStatusBar from './components/UpdateStatusBar.vue'
 import { useTimer } from './utils/useTimer.ts'
+import { sessionAccumulated } from './utils/useTimer.ts'
 import { useRouter } from 'vue-router'
 import { listenForBackendEvent } from './utils/events.ts'
 import { getMe } from './utils/me'
 import { initializeSettings } from './utils/settings.ts'
 import { useLiveTimer } from './utils/liveTimer'
 import { dayjs } from './utils/dayjs'
-import { useStorage } from '@vueuse/core'
-import { emptyTimeEntry } from './utils/timeEntries'
+import { accessToken, endpoint } from './utils/oauth.ts'
 
 const router = useRouter()
 
 const queryClient = useQueryClient()
 
 // Use the timer composable for shared timer logic
-const { stopTimer, startTimer, isActive } = useTimer()
+const { stopTimer, startTimer, pauseTimer, resumeTimer, isActive, isPaused, currentTimeEntry } = useTimer()
 
 // Live timer for bottom row display
 const { liveTimer, startLiveTimer, stopLiveTimer } = useLiveTimer()
-const currentTimeEntry = useStorage('currentTimeEntry', { ...emptyTimeEntry })
 
+// Session-aware timer: accumulated paused time + current segment
 const currentTime = computed(() => {
-    if (liveTimer.value && currentTimeEntry.value.start) {
+    let totalSeconds = sessionAccumulated.value
+    if (isActive.value && liveTimer.value && currentTimeEntry.value.start) {
         const startTime = dayjs(currentTimeEntry.value.start)
-        const diff = liveTimer.value.diff(startTime, 'seconds')
-        return time.formatDuration(diff)
+        totalSeconds += liveTimer.value.diff(startTime, 'seconds')
     }
-    return '00:00:00'
+    return time.formatDuration(totalSeconds)
 })
 
 // Start/stop live timer based on active state
@@ -75,12 +75,32 @@ watch(meResponse, () => {
     }
 })
 
-// Watch timer state and notify main process for idle detection
+// Watch timer active state for idle detection and screenshot stop
 watch(isActive, (active) => {
     if (window.electronAPI?.timerStateChanged) {
         window.electronAPI.timerStateChanged(active)
     }
+    if (!active) {
+        window.electronAPI?.screenshotTimerStopped?.()
+    }
 })
+
+// Watch currentTimeEntry to trigger screenshot IPC once time entry ID is available
+let lastSentScreenshotEntryId = ''
+watch(currentTimeEntry, (entry) => {
+    if (isActive.value && entry.id && entry.organization_id && entry.id !== lastSentScreenshotEntryId) {
+        lastSentScreenshotEntryId = entry.id
+        window.electronAPI?.screenshotTimerStarted?.(
+            entry.id,
+            entry.organization_id,
+            accessToken.value || '',
+            endpoint.value || ''
+        )
+    }
+    if (!isActive.value) {
+        lastSentScreenshotEntryId = ''
+    }
+}, { deep: true })
 
 onMounted(async () => {
     window.getTimezoneSetting = () => 'Europe/Vienna'
@@ -98,6 +118,12 @@ onMounted(async () => {
     })
     await listenForBackendEvent('stopTimer', () => {
         stopTimer()
+    })
+    await listenForBackendEvent('pauseTimer', () => {
+        pauseTimer()
+    })
+    await listenForBackendEvent('resumeTimer', () => {
+        resumeTimer()
     })
 
     // Listen for idle dialog response from main process
@@ -174,8 +200,10 @@ whenever(cmdComma, () => {
                 <div
                     class="h-10 w-full bg-background border-t border-border-primary flex items-center justify-between px-4">
                     <div class="flex items-center space-x-3">
-                        <div v-if="isActive" class="flex items-center space-x-3">
-                            <div class="text-text-tertiary font-medium text-xs">Current Timer</div>
+                        <div v-if="isActive || isPaused" class="flex items-center space-x-3">
+                            <div class="text-text-tertiary font-medium text-xs">
+                                {{ isPaused ? 'Session (Paused)' : 'Session Timer' }}
+                            </div>
                             <div class="text-text-primary font-medium text-sm">
                                 {{ currentTime }}
                             </div>

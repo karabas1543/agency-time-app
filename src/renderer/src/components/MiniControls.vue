@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ChevronRightIcon } from '@heroicons/vue/16/solid'
+import { ChevronRightIcon, PauseIcon, PlayIcon } from '@heroicons/vue/16/solid'
 import { ProjectBadge, time, TimeTrackerStartStop } from '@solidtime/ui'
 import { useLiveTimer } from '../utils/liveTimer'
 import { useMyMemberships } from '../utils/myMemberships'
@@ -12,6 +12,7 @@ import { getAllTasks } from '../utils/tasks'
 import { sendEventToWindow } from '../utils/events'
 import { showMainWindow } from '../utils/window'
 import { dayjs } from '../utils/dayjs'
+import { sessionAccumulated, sessionStart } from '../utils/useTimer'
 const { liveTimer, startLiveTimer, stopLiveTimer } = useLiveTimer()
 
 const { currentOrganizationId } = useMyMemberships()
@@ -19,6 +20,9 @@ const { currentOrganizationId } = useMyMemberships()
 const isRunning = computed(
     () => currentTimeEntry.value.start !== '' && currentTimeEntry.value.start !== null
 )
+
+// True when session is paused (sessionStart is set but no active entry)
+const isPaused = computed(() => !isRunning.value && !!sessionStart.value)
 
 const organizationIdToLoad = computed(() => {
     if (currentTimeEntry.value.organization_id && currentTimeEntry.value.organization_id !== '') {
@@ -148,13 +152,22 @@ function onToggleButtonPress(newState: boolean) {
     }
 }
 
+function onPauseClick() {
+    sendEventToWindow('main', 'pauseTimer')
+}
+
+function onResumeClick() {
+    sendEventToWindow('main', 'resumeTimer')
+}
+
+// Session-aware timer: accumulated + current segment
 const currentTimer = computed(() => {
-    if (liveTimer.value && currentTimeEntry.value.start) {
+    let totalSeconds = sessionAccumulated.value
+    if (isRunning.value && liveTimer.value && currentTimeEntry.value.start) {
         const startTime = dayjs(currentTimeEntry.value.start)
-        const diff = liveTimer.value.diff(startTime, 'seconds')
-        return time.formatDuration(diff)
+        totalSeconds += liveTimer.value.diff(startTime, 'seconds')
     }
-    return '00:00:00'
+    return time.formatDuration(totalSeconds)
 })
 </script>
 
@@ -205,6 +218,20 @@ const currentTimer = computed(() => {
                 style="-webkit-app-region: drag">
                 {{ currentTimer }}
             </div>
+            <button
+                v-if="isRunning"
+                class="w-6 h-6 flex items-center justify-center rounded text-text-tertiary hover:text-white transition-colors"
+                title="Pause"
+                @click="onPauseClick">
+                <PauseIcon class="w-4 h-4" />
+            </button>
+            <button
+                v-else-if="isPaused"
+                class="w-6 h-6 flex items-center justify-center rounded text-text-tertiary hover:text-white transition-colors"
+                title="Resume"
+                @click="onResumeClick">
+                <PlayIcon class="w-4 h-4" />
+            </button>
             <TimeTrackerStartStop
                 :active="isRunning"
                 size="small"

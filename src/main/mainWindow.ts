@@ -58,6 +58,12 @@ export function registerMainWindowListeners(mainWindow: BrowserWindow) {
     ipcMain.on('stopTimer', () => {
         mainWindow.webContents.send('stopTimer')
     })
+    ipcMain.on('pauseTimer', () => {
+        mainWindow.webContents.send('pauseTimer')
+    })
+    ipcMain.on('resumeTimer', () => {
+        mainWindow.webContents.send('resumeTimer')
+    })
     ipcMain.on('showMainWindow', () => {
         if (mainWindow) {
             mainWindow.show()

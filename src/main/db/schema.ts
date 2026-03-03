@@ -99,6 +99,27 @@ export type WindowActivity = typeof windowActivities.$inferSelect
 export type NewWindowActivity = typeof windowActivities.$inferInsert
 
 /**
+ * Screenshot upload queue for offline/retry support
+ */
+export const screenshotQueue = sqliteTable('screenshot_queue', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    filePath: text('file_path').notNull(),
+    timeEntryId: text('time_entry_id').notNull(),
+    organizationId: text('organization_id').notNull(),
+    token: text('token').notNull(),
+    endpoint: text('endpoint').notNull().default(''),
+    capturedAt: text('captured_at').notNull(),
+    displayIndex: integer('display_index').notNull().default(0),
+    attemptCount: integer('attempt_count').notNull().default(0),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export type ScreenshotQueueItem = typeof screenshotQueue.$inferSelect
+export type NewScreenshotQueueItem = typeof screenshotQueue.$inferInsert
+
+/**
  * Validates a NewWindowActivity object before insertion
  */
 export function validateNewWindowActivity(activity: NewWindowActivity): void {

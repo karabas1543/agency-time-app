@@ -13,6 +13,7 @@ import { runMigrations } from './db/migrate'
 import { registerActivityPeriodListeners } from './activityPeriods'
 import { registerSettingsListeners } from './settings'
 import { initializeActivityTracker, stopActivityTracking } from './activityTracker'
+import { initializeScreenshotCapture, stopScreenshotCapture } from './screenshot/index'
 import { registerWindowActivitiesHandlers } from './windowActivities'
 import { registerAppIconHandlers } from './appIcons'
 import * as Sentry from '@sentry/electron/main'
@@ -172,6 +173,7 @@ app.whenReady().then(async () => {
     createWindow()
     await initializeIdleMonitor()
     await initializeActivityTracker()
+    initializeScreenshotCapture()
 
     app.on('activate', function () {
         // On macOS it's common to re-create a window in the app when the
@@ -202,6 +204,7 @@ app.on('before-quit', async (event) => {
         })
 
         // Race the save operations against the timeout
+        stopScreenshotCapture()
         const savePromise = Promise.all([stopActivityTracking(), stopIdleMonitoring()])
 
         await Promise.race([savePromise, timeoutPromise])

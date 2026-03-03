@@ -7,6 +7,7 @@ import {
     idleDetectionEnabled,
     idleThresholdMinutes,
     activityTrackingEnabled,
+    screenshotEnabled,
 } from '../utils/settings.ts'
 import { useQuery, useQueryClient } from '@tanstack/vue-query'
 import { getMe } from '../utils/me'
@@ -142,7 +143,7 @@ async function confirmDeleteIconCache() {
 
 onMounted(async () => {
     // Check permission status on mount
-    if (activityTrackingEnabled.value) {
+    if (activityTrackingEnabled.value || screenshotEnabled.value) {
         hasPermission.value = await window.electronAPI.checkScreenRecordingPermission()
     }
 
@@ -176,6 +177,13 @@ watch(idleThresholdMinutes, (minutes) => {
 // Watch for activity tracking setting changes and notify main process
 watch(activityTrackingEnabled, (enabled) => {
     handleActivityTrackingToggle(enabled)
+})
+
+// Check screen recording permission when screenshot capture is enabled
+watch(screenshotEnabled, async (enabled) => {
+    if (enabled) {
+        hasPermission.value = await window.electronAPI.checkScreenRecordingPermission()
+    }
 })
 </script>
 
@@ -247,6 +255,29 @@ watch(activityTrackingEnabled, (enabled) => {
                             <p class="text-xs text-yellow-600">
                                 Screen Recording permission not granted. Activity tracking is
                                 enabled but window titles may not be captured.
+                            </p>
+                            <SecondaryButton
+                                class="text-xs py-1 px-2"
+                                @click="reopenPermissionModal">
+                                Grant Permission
+                            </SecondaryButton>
+                        </div>
+                    </div>
+                    <label class="flex items-center">
+                        <Checkbox
+                            v-model:checked="screenshotEnabled"
+                            name="screenshotEnabled" />
+                        <span class="ms-2 text-sm">Enable Screenshot Capture</span>
+                    </label>
+                    <div v-if="screenshotEnabled" class="ml-6 space-y-2">
+                        <div class="text-xs text-muted">
+                            Takes periodic screenshots during active time tracking sessions and
+                            uploads them to the team server.
+                        </div>
+                        <div v-if="!hasPermission" class="space-y-2">
+                            <p class="text-xs text-yellow-600">
+                                Screen Recording permission not granted. Screenshots cannot be
+                                captured without this permission.
                             </p>
                             <SecondaryButton
                                 class="text-xs py-1 px-2"

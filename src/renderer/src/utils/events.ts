@@ -9,6 +9,16 @@ export async function listenForBackendEvent(event: string, callback: () => void)
             callback()
         })
     }
+    if (event === 'pauseTimer') {
+        window.electronAPI.onPauseTimer(() => {
+            callback()
+        })
+    }
+    if (event === 'resumeTimer') {
+        window.electronAPI.onResumeTimer(() => {
+            callback()
+        })
+    }
 }
 
 export async function sendEventToWindow(_: string, event: string) {
@@ -17,5 +27,11 @@ export async function sendEventToWindow(_: string, event: string) {
     }
     if (event === 'stopTimer') {
         window.electronAPI.stopTimer()
+    }
+    if (event === 'pauseTimer') {
+        window.electronAPI.pauseTimer()
+    }
+    if (event === 'resumeTimer') {
+        window.electronAPI.resumeTimer()
     }
 }

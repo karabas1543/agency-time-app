@@ -11,6 +11,7 @@ export interface AppSettings {
     idleDetectionEnabled: boolean
     idleThresholdMinutes: number
     activityTrackingEnabled: boolean
+    screenshotEnabled: boolean
 }
 
 // Default settings
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     idleDetectionEnabled: true,
     idleThresholdMinutes: 5,
     activityTrackingEnabled: false, // Off by default for privacy
+    screenshotEnabled: true,
 }
 
 // Setting keys used in the database
@@ -29,6 +31,7 @@ const SETTING_KEYS = {
     IDLE_DETECTION_ENABLED: 'idle_detection_enabled',
     IDLE_THRESHOLD_MINUTES: 'idle_threshold_minutes',
     ACTIVITY_TRACKING_ENABLED: 'activity_tracking_enabled',
+    SCREENSHOT_ENABLED: 'screenshot_enabled',
 } as const
 
 /**
@@ -94,12 +97,14 @@ export async function getAppSettings(): Promise<AppSettings> {
             idleDetectionEnabled,
             idleThresholdMinutes,
             activityTrackingEnabled,
+            screenshotEnabled,
         ] = await Promise.all([
             getSetting(SETTING_KEYS.WIDGET_ACTIVATED),
             getSetting(SETTING_KEYS.TRAY_TIMER_ACTIVATED),
             getSetting(SETTING_KEYS.IDLE_DETECTION_ENABLED),
             getSetting(SETTING_KEYS.IDLE_THRESHOLD_MINUTES),
             getSetting(SETTING_KEYS.ACTIVITY_TRACKING_ENABLED),
+            getSetting(SETTING_KEYS.SCREENSHOT_ENABLED),
         ])
 
         return {
@@ -123,6 +128,10 @@ export async function getAppSettings(): Promise<AppSettings> {
                 activityTrackingEnabled !== null
                     ? activityTrackingEnabled === 'true'
                     : DEFAULT_SETTINGS.activityTrackingEnabled,
+            screenshotEnabled:
+                screenshotEnabled !== null
+                    ? screenshotEnabled === 'true'
+                    : DEFAULT_SETTINGS.screenshotEnabled,
         }
     } catch (error) {
         console.error('Failed to get app settings, using defaults:', error)
@@ -180,6 +189,15 @@ export async function updateAppSettings(
                 setSetting(
                     SETTING_KEYS.ACTIVITY_TRACKING_ENABLED,
                     String(partialSettings.activityTrackingEnabled)
+                )
+            )
+        }
+
+        if (partialSettings.screenshotEnabled !== undefined) {
+            promises.push(
+                setSetting(
+                    SETTING_KEYS.SCREENSHOT_ENABLED,
+                    String(partialSettings.screenshotEnabled)
                 )
             )
         }

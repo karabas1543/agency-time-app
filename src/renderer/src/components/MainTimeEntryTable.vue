@@ -35,7 +35,7 @@ import { getAllTags, useTagCreateMutation } from '../utils/tags.ts'
 import { LoadingSpinner } from '@solidtime/ui'
 
 import { useLiveTimer } from '../utils/liveTimer.ts'
-import { ClockIcon } from '@heroicons/vue/20/solid'
+import { ClockIcon, PauseIcon, PlayIcon } from '@heroicons/vue/20/solid'
 import { CardTitle } from '@solidtime/ui'
 import { useElementVisibility } from '@vueuse/core'
 import { currentMembershipId, useMyMemberships } from '../utils/myMemberships.ts'
@@ -53,7 +53,7 @@ const currentOrganizationLoaded = computed(() => !!currentOrganizationId.value)
 const { liveTimer, startLiveTimer, stopLiveTimer } = useLiveTimer()
 
 // Use the timer composable for shared timer logic
-const { currentTimeEntry, lastTimeEntry, isActive, stopTimer, startTimer, timeEntryCreate } =
+const { currentTimeEntry, lastTimeEntry, isActive, isPaused, stopTimer, startTimer, pauseTimer, resumeTimer, timeEntryCreate } =
     useTimer()
 
 const selectedTimeEntries = ref([] as TimeEntry[])
@@ -327,6 +327,22 @@ watch(isLoadMoreVisible, async (isVisible) => {
                             @start-timer="startTimer"
                             @stop-timer="stopTimer"
                             @update-time-entry="updateCurrentTimeEntry"></TimeTrackerControls>
+                        <div class="flex justify-end mt-2 pr-1">
+                            <button
+                                v-if="isActive"
+                                class="flex items-center space-x-1 text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-1 rounded border border-transparent hover:border-border-primary"
+                                @click="pauseTimer">
+                                <PauseIcon class="w-3.5 h-3.5" />
+                                <span>Pause</span>
+                            </button>
+                            <button
+                                v-else-if="isPaused"
+                                class="flex items-center space-x-1 text-xs text-text-tertiary hover:text-text-primary transition-colors px-2 py-1 rounded border border-transparent hover:border-border-primary"
+                                @click="resumeTimer">
+                                <PlayIcon class="w-3.5 h-3.5" />
+                                <span>Resume</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 <div class="flex justify-center items-center pt-5 group pr-4">

@@ -4,6 +4,7 @@ export interface AppSettings {
     idleDetectionEnabled: boolean
     idleThresholdMinutes: number
     activityTrackingEnabled: boolean
+    screenshotEnabled: boolean
 }
 
 export interface WindowActivity {
@@ -34,10 +35,16 @@ export interface IElectronAPI {
     triggerUpdate: () => void
     startTimer: () => void
     stopTimer: () => void
+    pauseTimer: () => void
+    resumeTimer: () => void
     onOpenDeeplink: (callback: (url: string) => Promise<void>) => void
     onAutoUpdaterError: (callback: (error: string | undefined) => Promise<void>) => void
     onStartTimer: (callback: () => void) => void
     onStopTimer: (callback: () => void) => void
+    onPauseTimer: (callback: () => void) => void
+    onResumeTimer: (callback: () => void) => void
+    screenshotTimerStarted: (timeEntryId: string, organizationId: string, token: string, endpoint: string) => void
+    screenshotTimerStopped: () => void
     updateTrayState: (timeEntry: string, showTimer: boolean) => void
     updateAutoUpdater: () => void
     updateIdleThreshold: (thresholdMinutes: number) => void

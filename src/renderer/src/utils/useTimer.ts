@@ -9,6 +9,10 @@ import {
 import { currentMembershipId, useMyMemberships } from './myMemberships.ts'
 import { dayjs } from './dayjs.ts'
 
+// Module-level session state — shared across all composable instances via localStorage
+export const sessionStart = useStorage('timerSessionStart', '')
+export const sessionAccumulated = useStorage('timerSessionAccumulated', 0)
+
 /**
  * Composable for managing timer state and operations
  * Provides shared logic for starting/stopping timers across components
@@ -48,10 +52,18 @@ export function useTimer() {
     })
 
     /**
-     * Stop the current timer
+     * True when a session is paused (sessionStart set, but no active entry)
+     */
+    const isPaused = computed(() => !!sessionStart.value && !isActive.value)
+
+    /**
+     * Stop the current timer and clear session state
      * @param endTime - Optional end time (ISO string). If not provided, uses current time
      */
     async function stopTimer(endTime?: string) {
+        sessionStart.value = ''
+        sessionAccumulated.value = 0
+
         const stoppedTimeEntry = { ...currentTimeEntry.value }
         currentMembershipId.value = memberships.value.find(
             (membership) => membership.organization.id === stoppedTimeEntry.organization_id
@@ -65,10 +77,67 @@ export function useTimer() {
     }
 
     /**
-     * Start a new timer
+     * Pause the current timer: accumulate elapsed time, stop the API entry
+     */
+    async function pauseTimer() {
+        if (!isActive.value) return
+
+        const nowUtc = dayjs().utc()
+        const elapsed = nowUtc.diff(dayjs(currentTimeEntry.value.start), 'seconds')
+        sessionAccumulated.value = (sessionAccumulated.value || 0) + elapsed
+
+        const stoppedTimeEntry = { ...currentTimeEntry.value }
+        currentMembershipId.value = memberships.value.find(
+            (membership) => membership.organization.id === stoppedTimeEntry.organization_id
+        )?.id
+        currentTimeEntry.value = { ...emptyTimeEntry }
+
+        await timeEntryStop.mutateAsync({
+            ...stoppedTimeEntry,
+            end: nowUtc.format(),
+        })
+    }
+
+    /**
+     * Resume a paused session by creating a new time entry with the same context
+     */
+    function resumeTimer() {
+        if (isActive.value || !sessionStart.value) return
+
+        const startTime = dayjs().utc().format()
+
+        if (lastTimeEntry.value && lastTimeEntry.value.start) {
+            currentTimeEntry.value = {
+                ...emptyTimeEntry,
+                project_id: lastTimeEntry.value.project_id,
+                task_id: lastTimeEntry.value.task_id,
+                description: lastTimeEntry.value.description,
+                tags: lastTimeEntry.value.tags,
+                billable: lastTimeEntry.value.billable,
+                start: startTime,
+            }
+        } else {
+            currentTimeEntry.value = {
+                ...emptyTimeEntry,
+                start: startTime,
+            }
+        }
+
+        const timeEntryToCreate: CreateTimeEntryBody = {
+            ...currentTimeEntry.value,
+            member_id: currentMembershipId.value!,
+        }
+        timeEntryCreate.mutate(timeEntryToCreate)
+    }
+
+    /**
+     * Start a new timer — resets session state
      * Copies properties from the last time entry if available
      */
     function startTimer() {
+        sessionStart.value = dayjs().utc().format()
+        sessionAccumulated.value = 0
+
         const startTime = dayjs().utc().format()
 
         if (lastTimeEntry.value && lastTimeEntry.value.start) {
@@ -101,8 +170,11 @@ export function useTimer() {
         currentTimeEntry,
         lastTimeEntry,
         isActive,
+        isPaused,
         stopTimer,
         startTimer,
+        pauseTimer,
+        resumeTimer,
         timeEntryStop,
         timeEntryCreate,
     }

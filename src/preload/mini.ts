@@ -14,6 +14,8 @@ if (process.contextIsolated) {
         contextBridge.exposeInMainWorld('electronAPI', {
             startTimer: () => ipcRenderer.send('startTimer'),
             stopTimer: () => ipcRenderer.send('stopTimer'),
+            pauseTimer: () => ipcRenderer.send('pauseTimer'),
+            resumeTimer: () => ipcRenderer.send('resumeTimer'),
             showMainWindow: () => ipcRenderer.send('showMainWindow'),
         })
     } catch (error) {
